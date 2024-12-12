@@ -14,6 +14,8 @@ spec:
         app: {{ include "minetest.fullname" . }}
         component: minetest
     spec:
+      hostname: minetest-pod
+      subdomain: {{ include "minetest.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -52,8 +54,8 @@ spec:
             curl -L -o game.zip {{ .Values.gameUrl }}/download;
             unzip game.zip; mv $(find . -mindepth 1 -maxdepth 1 -type d)/* .; rmdir $(find . -mindepth 1 -maxdepth 1 -type d);
             mkdir -p /config/.minetest/main-config/;
-            echo "default_game = $(echo {{ .Values.gameUrl }} | awk -F "/" '{print $(NF)}')" > /config/.minetest/main-config/minetest.conf
-            if [ $( echo {{ .Values.prometheus_url }}) ]; then echo -e "prometheus_listener_address = {{ .Values.prometheus_url }}"  >> /config/.minetest/main-config/minetest.conf; fi 
+            echo "default_game = $(echo {{ .Values.gameUrl }} | awk -F "/" '{print $(NF)}')" > /config/.minetest/main-config/minetest.conf;
+            echo "prometheus_listener_address = 0.0.0.0:9009" >> /config/.minetest/main-config/minetest.conf;
         volumeMounts:
           - name: minetest-config
             mountPath: /config
@@ -87,8 +89,8 @@ spec:
             subPath: .minetest
           {{- if .Values.worldmtSecretName }}
           - name: minetest-worldmt
-            readOnly: true
-            mountPath: "/config/.minetest/worlds/world/"
+            readOnly: false
+            mountPath: "/config/.minetest/worlds/world/world.mt"
             subPath: world.mt
           {{- end }}
         env:
@@ -101,6 +103,10 @@ spec:
             containerPort: 30000
             hostPort: {{ .Values.minetestPort }}
             protocol: UDP
+          - name: prometheus
+            containerPort: 9009
+            hostPort: 9009
+            protocol: TCP
         {{- with .Values.resources }}
         resources:
         {{- .|toYaml|nindent 10}}
